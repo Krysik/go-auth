@@ -11,8 +11,8 @@ type Account struct {
 	FullName string
 	Email string
 	Password string
-	CreatedAt time.Time `gorm:"autoCreateTime:milli"`
-	UpdatedAt time.Time `gorm:"autoUpdateTime:milli"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type NewAccount struct {
@@ -23,19 +23,32 @@ type NewAccount struct {
 
 func CreateAccount(db *gorm.DB, account NewAccount) (*Account, error) {
 	acc := Account{
+		ID: "1234",
 		FullName: account.FullName,
 		Email: account.Email,
-		// TODO: hash the password
 		Password: account.Password,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
 
-	result := db.Create(&acc)
+	createResult := db.Create(&acc)
+
+	if createResult.Error != nil {
+		return nil, createResult.Error
+	}
+
+	return &acc, nil
+}
+
+func ListAccounts(db *gorm.DB) ([]Account, error) {
+	var accounts []Account
+	result := db.Find(&accounts)
 
 	if result.Error != nil {
 		return nil, result.Error
 	}
 
-	return &acc, nil
+	return accounts, nil
 }
 
 
