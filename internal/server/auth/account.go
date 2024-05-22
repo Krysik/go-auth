@@ -3,41 +3,42 @@ package auth
 import (
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type Account struct {
-	ID	string `gorm:"primaryKey"`
-	FullName string
-	Email string
-	Password string
+	ID        string `gorm:"primaryKey"`
+	FullName  string
+	Email     string
+	Password  string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
 type NewAccount struct {
 	FullName string
-	Email string
+	Email    string
 	Password string
 }
 
 func CreateAccount(db *gorm.DB, account NewAccount) (*Account, error) {
-	acc := Account{
-		ID: "1234",
-		FullName: account.FullName,
-		Email: account.Email,
-		Password: account.Password,
+	acc := &Account{
+		ID:        uuid.NewString(),
+		FullName:  account.FullName,
+		Email:     account.Email,
+		Password:  account.Password,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
 
-	createResult := db.Create(&acc)
+	createResult := db.Create(acc)
 
 	if createResult.Error != nil {
 		return nil, createResult.Error
 	}
 
-	return &acc, nil
+	return acc, nil
 }
 
 func ListAccounts(db *gorm.DB) ([]Account, error) {
@@ -50,5 +51,3 @@ func ListAccounts(db *gorm.DB) ([]Account, error) {
 
 	return accounts, nil
 }
-
-

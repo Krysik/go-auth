@@ -29,5 +29,5 @@ func main() {
 		DB: db,
 	}
 	server := server.NewServer(&deps)
-	server.Logger.Fatal(server.Start(":" + PORT), "failed to start server")
+	server.Logger.Fatal(server.Start(":"+PORT), "failed to start server")
 }
