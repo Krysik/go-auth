@@ -1,6 +1,7 @@
 package server
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/Krysik/go-auth/internal/server/auth"
@@ -35,18 +36,21 @@ type AccountResource struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 }
 
-type CreateAccountPayload struct {
+type NewAccountPayload struct {
 	FullName string `json:"fullName"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type NewSessionPayload struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
 func registerRoutes(server *echo.Echo, deps *AppDeps) {
 	server.POST("/accounts", func(ctx echo.Context) error {
-		/*
-			TODO: hash password
-		*/
-		payload := new(CreateAccountPayload)
+		payload := new(NewAccountPayload)
+
 		if err := ctx.Bind(payload); err != nil {
 			return ctx.JSON(400, HttpErrorResponse{
 				Errors: []HttpError{
@@ -82,7 +86,7 @@ func registerRoutes(server *echo.Echo, deps *AppDeps) {
 			})
 		}
 
-		return ctx.JSON(200, HttpResource{Data: AccountResource{
+		return ctx.JSON(201, HttpResource{Data: AccountResource{
 			Id:        acc.ID,
 			Type:      "account",
 			FullName:  acc.FullName,
@@ -121,6 +125,68 @@ func registerRoutes(server *echo.Echo, deps *AppDeps) {
 	})
 
 	server.POST("/sessions", func(ctx echo.Context) error {
-		return ctx.String(200, "OK")
+		payload := new(NewSessionPayload)
+
+		if err := ctx.Bind(payload); err != nil {
+			ctx.Logger().Error(err.Error(), " failed to bind payload")
+			return ctx.JSON(http.StatusBadRequest, HttpErrorResponse{
+				Errors: []HttpError{
+					{
+						Code:    "BAD_REQUEST",
+						Title:   "Validation error",
+						Details: "Invalid body payload",
+					},
+				},
+			})
+		}
+
+		account, err := auth.ValidateCredentials(deps.DB, payload.Email, payload.Password)
+
+		if err != nil {
+			ctx.Logger().Error(err.Error(), " failed to validate credentials")
+
+			return ctx.JSON(http.StatusUnauthorized, HttpErrorResponse{
+				Errors: []HttpError{
+					{
+						Code:    "UNAUTHORIZED",
+						Title:   "Unauthorized",
+						Details: "Invalid credentials",
+					},
+				},
+			})
+		}
+
+		authTokens, err := auth.GenerateAuthTokens("localhost")
+
+		if err != nil {
+			ctx.Logger().Error(err.Error(), " failed to generate auth tokens")
+			return err
+		}
+
+		ctx.SetCookie(&http.Cookie{
+			Name:     "accessToken",
+			Value:    authTokens.AccessToken,
+			HttpOnly: true,
+			Secure:   true,
+			Path:     "/",
+			Expires:  authTokens.AccessTokenTtl,
+		})
+		ctx.SetCookie(&http.Cookie{
+			Name:     "refreshToken",
+			Value:    authTokens.RefreshToken,
+			HttpOnly: true,
+			Secure:   true,
+			Path:     "/",
+			Expires:  authTokens.RefreshTokenTtl,
+		})
+
+		return ctx.JSON(200, HttpResource{Data: AccountResource{
+			Id:        account.ID,
+			Type:      "account",
+			FullName:  account.FullName,
+			Email:     account.Email,
+			CreatedAt: account.CreatedAt,
+			UpdatedAt: account.UpdatedAt,
+		}})
 	})
 }
