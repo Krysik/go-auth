@@ -31,14 +31,13 @@ func ValidateCredentials(db *gorm.DB, email string, password string) (*Account, 
 	return &account, nil
 }
 
-func comparePasswords(hashedPassword, salt, plainPassword string) (bool, error) {
+func comparePasswords(hashedPassword, salt, plainPassword string) bool {
 	otherHash := hashPassword(plainPassword, salt)
 
 	if subtle.ConstantTimeCompare([]byte(hashedPassword), otherHash) == 1 {
-		return true, nil
+		return true
 	}
-
-	return false, nil
+	return false
 }
 
 type AuthToken struct {
@@ -83,3 +82,4 @@ func GenerateAuthTokens(issuer string) (*AuthToken, error) {
 		RefreshTokenTtl: refreshTokenTtl,
 	}, nil
 }
+
