@@ -47,6 +47,8 @@ type NewSessionPayload struct {
 	Password string `json:"password"`
 }
 
+const issuer = "localhost"
+
 func registerRoutes(server *echo.Echo, deps *AppDeps) {
 	server.POST("/accounts", func(ctx echo.Context) error {
 		payload := new(NewAccountPayload)
@@ -122,6 +124,8 @@ func registerRoutes(server *echo.Echo, deps *AppDeps) {
 		return ctx.JSON(200, HttpResourceList{
 			Data: accountResources,
 		})
+	}, func(next echo.HandlerFunc) echo.HandlerFunc {
+		return newAuthMiddlewareContext(next, issuer)
 	})
 
 	server.POST("/sessions", func(ctx echo.Context) error {
@@ -156,10 +160,96 @@ func registerRoutes(server *echo.Echo, deps *AppDeps) {
 			})
 		}
 
-		authTokens, err := auth.GenerateAuthTokens("localhost")
+		authTokens, err := auth.GenerateAuthTokens(issuer, account.ID)
 
 		if err != nil {
 			ctx.Logger().Error(err.Error(), " failed to generate auth tokens")
+			return err
+		}
+
+		err = auth.SaveRefreshToken(deps.DB, authTokens.RefreshToken, account.ID)
+
+		if err != nil {
+			return err
+		}
+
+		ctx.SetCookie(&http.Cookie{
+			Name:     "accessToken",
+			Value:    authTokens.AccessToken,
+			HttpOnly: true,
+			Path:     "/",
+			Expires:  authTokens.AccessTokenTtl,
+		})
+		ctx.SetCookie(&http.Cookie{
+			Name:     "refreshToken",
+			Value:    authTokens.RefreshToken,
+			HttpOnly: true,
+			Path:     "/",
+			Expires:  authTokens.RefreshTokenTtl,
+		})
+
+		return ctx.JSON(200, HttpResource{Data: AccountResource{
+			Id:        account.ID,
+			Type:      "account",
+			FullName:  account.FullName,
+			Email:     account.Email,
+			CreatedAt: account.CreatedAt,
+			UpdatedAt: account.UpdatedAt,
+		}})
+	})
+
+	server.PATCH("/sessions", func(ctx echo.Context) error {
+		// TODO: run in database transaction
+		refreshTokenCookie, refreshTokenCookieErr := ctx.Cookie("refreshToken")
+
+		if refreshTokenCookieErr != nil {
+			return ctx.JSON(http.StatusBadRequest, HttpErrorResponse{
+				Errors: []HttpError{
+					{
+						Code:  "MISSING_REFRESH_TOKEN_COOKIE",
+						Title: "Missing refresh token cookie",
+					},
+				},
+			})
+		}
+
+		accountId := ctx.(*AuthContext).AccountId
+		_, err := auth.GetAccountById(deps.DB, accountId)
+
+		if err != nil {
+			return ctx.JSON(http.StatusNotFound, HttpErrorResponse{
+				Errors: []HttpError{
+					{
+						Code:  "ACCOUNT_NOT_FOUND",
+						Title: "Account not found",
+					},
+				},
+			})
+		}
+		refreshToken := refreshTokenCookie.Value
+		_, err = auth.GetRefreshToken(deps.DB, refreshToken, accountId)
+
+		if err != nil {
+			return ctx.JSON(http.StatusUnauthorized, HttpErrorResponse{
+				Errors: []HttpError{
+					{
+						Code:  "REFRESH_TOKEN_NOT_FOUND",
+						Title: "Refresh token not found",
+					},
+				},
+			})
+		}
+
+		authTokens, err := auth.GenerateAuthTokens("localhost", accountId)
+
+		if err != nil {
+			ctx.Logger().Error(err.Error(), " failed to generate auth tokens")
+			return err
+		}
+
+		err = auth.SaveRefreshToken(deps.DB, authTokens.RefreshToken, accountId)
+
+		if err != nil {
 			return err
 		}
 
@@ -180,13 +270,6 @@ func registerRoutes(server *echo.Echo, deps *AppDeps) {
 			Expires:  authTokens.RefreshTokenTtl,
 		})
 
-		return ctx.JSON(200, HttpResource{Data: AccountResource{
-			Id:        account.ID,
-			Type:      "account",
-			FullName:  account.FullName,
-			Email:     account.Email,
-			CreatedAt: account.CreatedAt,
-			UpdatedAt: account.UpdatedAt,
-		}})
+		return ctx.String(200, "Refreshed")
 	})
 }

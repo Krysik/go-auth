@@ -6,8 +6,16 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
+
+type RefreshToken struct {
+	ID        string `gorm:"primaryKey"`
+	Token     string
+	AccountId string
+	CreatedAt time.Time
+}
 
 func ValidateCredentials(db *gorm.DB, email string, password string) (*Account, error) {
 	var account Account
@@ -18,11 +26,7 @@ func ValidateCredentials(db *gorm.DB, email string, password string) (*Account, 
 		return nil, queryResult.Error
 	}
 
-	passwordMatch, err := comparePasswords(account.Password, account.Salt, password)
-
-	if err != nil {
-		return nil, err
-	}
+	passwordMatch := comparePasswords(account.Password, account.Salt, password)
 
 	if !passwordMatch {
 		return nil, errors.New("invalid password")
@@ -33,11 +37,7 @@ func ValidateCredentials(db *gorm.DB, email string, password string) (*Account, 
 
 func comparePasswords(hashedPassword, salt, plainPassword string) bool {
 	otherHash := hashPassword(plainPassword, salt)
-
-	if subtle.ConstantTimeCompare([]byte(hashedPassword), otherHash) == 1 {
-		return true
-	}
-	return false
+	return subtle.ConstantTimeCompare([]byte(hashedPassword), otherHash) == 1
 }
 
 type AuthToken struct {
@@ -47,16 +47,24 @@ type AuthToken struct {
 	RefreshTokenTtl time.Time
 }
 
-func GenerateAuthTokens(issuer string) (*AuthToken, error) {
+type TokenClaims struct {
+	jwt.RegisteredClaims
+}
+
+func GenerateAuthTokens(issuer, accountId string) (*AuthToken, error) {
 	// TODO: get secret from environment variable
 	secret := []byte("top-secret")
 	now := time.Now()
 
 	accessTokenTtl := now.Add(time.Hour)
-	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"iss": issuer,
-		"exp": accessTokenTtl.Unix(),
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, &TokenClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    issuer,
+			ExpiresAt: jwt.NewNumericDate(accessTokenTtl),
+			Subject:   accountId,
+		},
 	})
+
 	signedAccessJwt, accessTokenErr := accessToken.SignedString(secret)
 
 	if accessTokenErr != nil {
@@ -65,9 +73,12 @@ func GenerateAuthTokens(issuer string) (*AuthToken, error) {
 	dayInHours := 24 * time.Hour
 
 	refreshTokenTtl := now.Add(dayInHours * 30)
-	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"iss": issuer,
-		"exp": refreshTokenTtl.Unix(),
+	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, &TokenClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    issuer,
+			ExpiresAt: jwt.NewNumericDate(refreshTokenTtl),
+			Subject:   accountId,
+		},
 	})
 	signedRefreshJwt, refreshTokenErr := refreshToken.SignedString(secret)
 
@@ -83,3 +94,17 @@ func GenerateAuthTokens(issuer string) (*AuthToken, error) {
 	}, nil
 }
 
+func SaveRefreshToken(db *gorm.DB, refreshToken, accountId string) error {
+	rt := &RefreshToken{
+		ID:        uuid.NewString(),
+		Token:     refreshToken,
+		AccountId: accountId,
+	}
+
+	createResult := db.Create(rt)
+
+	if createResult.Error != nil {
+		return createResult.Error
+	}
+	return nil
+}

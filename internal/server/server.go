@@ -21,7 +21,7 @@ func NewServer(appDeps *AppDeps) *echo.Echo {
 
 	server.GET("/metrics", echoprometheus.NewHandler())
 
-	err := appDeps.DB.AutoMigrate(&auth.Account{})
+	err := appDeps.DB.AutoMigrate(&auth.Account{}, &auth.RefreshToken{})
 
 	if err != nil {
 		panic("failed to migrate database")
