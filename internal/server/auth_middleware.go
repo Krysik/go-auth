@@ -14,7 +14,6 @@ type AuthContext struct {
 }
 
 func newAuthMiddlewareContext(next echo.HandlerFunc, issuer string) echo.HandlerFunc {
-	// fmt.Println(ac.GE)
 	return func(ctx echo.Context) error {
 		accessTokenCookie, err := ctx.Request().Cookie("accessToken")
 
@@ -34,12 +33,11 @@ func newAuthMiddlewareContext(next echo.HandlerFunc, issuer string) echo.Handler
 		accessToken := accessTokenCookie.Value
 
 		token, err := jwt.ParseWithClaims(accessToken, &auth.TokenClaims{}, func(token *jwt.Token) (interface{}, error) {
-			// token.Claims.
 			return []byte("top-secret"), nil
 		}, jwt.WithIssuer(issuer), jwt.WithExpirationRequired())
 
 		if err != nil {
-			ctx.Logger().Warn("failed to parse access token ", err.Error())
+			ctx.Logger().Warn("failed to parse access token ", err)
 			return ctx.JSON(http.StatusUnauthorized, HttpErrorResponse{
 				Errors: []HttpError{
 					{

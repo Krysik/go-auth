@@ -5,6 +5,7 @@ import (
 	"github.com/labstack/echo-contrib/echoprometheus"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/labstack/gommon/log"
 	"gorm.io/gorm"
 )
 
@@ -19,8 +20,9 @@ func NewServer(appDeps *AppDeps) *echo.Echo {
 
 	server.Use(echoprometheus.NewMiddleware("auth"))
 
-	server.GET("/metrics", echoprometheus.NewHandler())
+	server.Logger.SetLevel(log.INFO)
 
+	server.GET("/metrics", echoprometheus.NewHandler())
 	err := appDeps.DB.AutoMigrate(&auth.Account{}, &auth.RefreshToken{})
 
 	if err != nil {
