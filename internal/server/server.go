@@ -1,7 +1,6 @@
 package server
 
 import (
-	"github.com/Krysik/go-auth/internal/server/auth"
 	"github.com/labstack/echo-contrib/echoprometheus"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -10,7 +9,8 @@ import (
 )
 
 type AppDeps struct {
-	DB *gorm.DB
+	DB  *gorm.DB
+	ENV *ENV
 }
 
 func NewServer(appDeps *AppDeps) *echo.Echo {
@@ -19,25 +19,14 @@ func NewServer(appDeps *AppDeps) *echo.Echo {
 	server.Use(middleware.Logger())
 
 	server.Use(echoprometheus.NewMiddleware("auth"))
-	env, err := NewEnv()
-
-	if err != nil {
-		server.Logger.Fatal("Invalid environment variables ", err.Error())
-		panic(err)
-	}
 
 	server.Logger.SetLevel(log.INFO)
 
 	server.GET("/metrics", echoprometheus.NewHandler())
-	err = appDeps.DB.AutoMigrate(&auth.Account{}, &auth.RefreshToken{})
-
-	if err != nil {
-		panic("failed to migrate database")
-	}
 
 	registerRoutes(server, &RouteDeps{
 		DB:  appDeps.DB,
-		ENV: env,
+		ENV: appDeps.ENV,
 	})
 
 	return server

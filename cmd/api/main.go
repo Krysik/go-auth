@@ -1,40 +1,45 @@
 package main
 
 import (
+	"fmt"
 	"log"
-	"os"
 
 	"github.com/Krysik/go-auth/internal/server"
+	"github.com/Krysik/go-auth/internal/server/auth"
 	"github.com/joho/godotenv"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
-// TODO: get port from environment variable
-const PORT = "8080"
-
 func main() {
-	dbFilePath := os.Getenv("DB_FILE_PATH")
-	err := godotenv.Load()
+	loadDotenvErr := godotenv.Load()
 
-	if err != nil {
+	if loadDotenvErr != nil {
 		log.Fatal("Error loading .env file")
 	}
+	env, newEnvErr := server.NewEnv()
 
-	if dbFilePath == "" {
-		dbFilePath = "db.sqlite"
+	if newEnvErr != nil {
+		log.Fatalf("Error while parsing env variables %v", newEnvErr)
 	}
 
-	db, err := gorm.Open(sqlite.Open(dbFilePath), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(env.DbFilePath), &gorm.Config{})
 
 	if err != nil {
 		panic("cannot establish database connection")
 	}
 
+	err = db.AutoMigrate(&auth.Account{}, &auth.RefreshToken{})
+
+	if err != nil {
+		panic("failed to migrate database")
+	}
+
 	deps := server.AppDeps{
-		DB: db,
+		DB:  db,
+		ENV: env,
 	}
 	server := server.NewServer(&deps)
-	server.Logger.Fatal(server.Start(":"+PORT), "failed to start server")
+	server.Logger.Fatal(server.Start(":"+fmt.Sprint(env.Port)), "failed to start server")
 }

@@ -58,7 +58,7 @@ func registerRefreshSessionRoute(deps *refreshSessionHandlerDeps) {
 			})
 		}
 
-		authTokens, err := auth.GenerateAuthTokens("localhost", deps.ENV.JWT_SECRET, accountId)
+		authTokens, err := auth.GenerateAuthTokens("localhost", deps.ENV.JwtSecret, accountId)
 
 		if err != nil {
 			ctx.Logger().Error(err.Error(), " failed to generate auth tokens")
@@ -88,8 +88,8 @@ func registerRefreshSessionRoute(deps *refreshSessionHandlerDeps) {
 			Expires:  authTokens.RefreshTokenTtl,
 		})
 
-		return ctx.String(200, "Refreshed")
+		return ctx.NoContent(http.StatusNoContent)
 	}, func(next echo.HandlerFunc) echo.HandlerFunc {
-		return newAuthMiddlewareContext(next, deps.ENV.JWT_SECRET, issuer)
+		return newAuthMiddlewareContext(next, deps.ENV.TokenIssuer, deps.ENV.JwtSecret)
 	})
 }

@@ -39,8 +39,6 @@ type NewSessionPayload struct {
 	Password string `json:"password"`
 }
 
-const issuer = "localhost"
-
 type RouteDeps struct {
 	DB  *gorm.DB
 	ENV *ENV

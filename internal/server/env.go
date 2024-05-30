@@ -1,33 +1,21 @@
 package server
 
 import (
-	"errors"
-	"fmt"
-	"os"
+	"github.com/caarlos0/env/v11"
 )
 
 type ENV struct {
-	JWT_SECRET string
+	JwtSecret   string `env:"JWT_SECRET"`
+	TokenIssuer string `env:"TOKEN_ISSUER"`
+	Port        int    `env:"PORT" envDefault:"8080"`
+	DbFilePath  string `env:"DB_FILE_PATH"`
 }
 
 func NewEnv() (*ENV, error) {
-	jwtSecret, err := getEnv("JWT_SECRET")
+	e := &ENV{}
 
-	if err != nil {
+	if err := env.Parse(e); err != nil {
 		return nil, err
 	}
-
-	return &ENV{
-		JWT_SECRET: jwtSecret,
-	}, nil
-}
-
-func getEnv(key string) (string, error) {
-	env, exists := os.LookupEnv(key)
-
-	if !exists || env == "" {
-		return "", errors.New(fmt.Sprintf("variable \"%v\" is missing", key))
-	}
-
-	return env, nil
+	return e, nil
 }

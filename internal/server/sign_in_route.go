@@ -47,7 +47,7 @@ func registerSignInRoute(deps *signInRouteDeps) {
 			})
 		}
 
-		authTokens, err := auth.GenerateAuthTokens(issuer, deps.ENV.JWT_SECRET, account.ID)
+		authTokens, err := auth.GenerateAuthTokens(deps.ENV.TokenIssuer, deps.ENV.JwtSecret, account.ID)
 
 		if err != nil {
 			ctx.Logger().Error(err.Error(), " failed to generate auth tokens")

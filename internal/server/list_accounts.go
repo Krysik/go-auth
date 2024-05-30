@@ -40,6 +40,6 @@ func registerListAccountsRoute(deps *listAccountsDeps) {
 			Data: accountResources,
 		})
 	}, func(next echo.HandlerFunc) echo.HandlerFunc {
-		return newAuthMiddlewareContext(next, issuer, deps.ENV.JWT_SECRET)
+		return newAuthMiddlewareContext(next, deps.ENV.TokenIssuer, deps.ENV.JwtSecret)
 	})
 }
