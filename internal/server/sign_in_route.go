@@ -11,6 +11,7 @@ import (
 type signInRouteDeps struct {
 	DB     *gorm.DB
 	Server *echo.Echo
+	ENV    *ENV
 }
 
 func registerSignInRoute(deps *signInRouteDeps) {
@@ -46,7 +47,7 @@ func registerSignInRoute(deps *signInRouteDeps) {
 			})
 		}
 
-		authTokens, err := auth.GenerateAuthTokens(issuer, account.ID)
+		authTokens, err := auth.GenerateAuthTokens(issuer, deps.ENV.JWT_SECRET, account.ID)
 
 		if err != nil {
 			ctx.Logger().Error(err.Error(), " failed to generate auth tokens")

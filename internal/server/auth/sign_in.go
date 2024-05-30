@@ -51,9 +51,8 @@ type TokenClaims struct {
 	jwt.RegisteredClaims
 }
 
-func GenerateAuthTokens(issuer, accountId string) (*AuthToken, error) {
-	// TODO: get secret from environment variable
-	secret := []byte("top-secret")
+func GenerateAuthTokens(issuer, jwtSecret, accountId string) (*AuthToken, error) {
+	secret := []byte(jwtSecret)
 	now := time.Now()
 
 	accessTokenTtl := now.Add(time.Hour)

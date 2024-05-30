@@ -1,9 +1,11 @@
 package main
 
 import (
+	"log"
 	"os"
 
 	"github.com/Krysik/go-auth/internal/server"
+	"github.com/joho/godotenv"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -14,6 +16,11 @@ const PORT = "8080"
 
 func main() {
 	dbFilePath := os.Getenv("DB_FILE_PATH")
+	err := godotenv.Load()
+
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
 
 	if dbFilePath == "" {
 		dbFilePath = "db.sqlite"

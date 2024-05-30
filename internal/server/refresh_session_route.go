@@ -11,6 +11,7 @@ import (
 type refreshSessionHandlerDeps struct {
 	DB     *gorm.DB
 	Server *echo.Echo
+	ENV    *ENV
 }
 
 func registerRefreshSessionRoute(deps *refreshSessionHandlerDeps) {
@@ -57,7 +58,7 @@ func registerRefreshSessionRoute(deps *refreshSessionHandlerDeps) {
 			})
 		}
 
-		authTokens, err := auth.GenerateAuthTokens("localhost", accountId)
+		authTokens, err := auth.GenerateAuthTokens("localhost", deps.ENV.JWT_SECRET, accountId)
 
 		if err != nil {
 			ctx.Logger().Error(err.Error(), " failed to generate auth tokens")
@@ -89,6 +90,6 @@ func registerRefreshSessionRoute(deps *refreshSessionHandlerDeps) {
 
 		return ctx.String(200, "Refreshed")
 	}, func(next echo.HandlerFunc) echo.HandlerFunc {
-		return newAuthMiddlewareContext(next, issuer)
+		return newAuthMiddlewareContext(next, deps.ENV.JWT_SECRET, issuer)
 	})
 }

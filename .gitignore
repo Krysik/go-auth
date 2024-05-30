@@ -18,3 +18,4 @@
 go.work
 
 db.sqlite
+.env

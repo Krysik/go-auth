@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"gorm.io/gorm"
 )
 
 type HttpResource struct {
@@ -40,10 +41,16 @@ type NewSessionPayload struct {
 
 const issuer = "localhost"
 
-func registerRoutes(server *echo.Echo, deps *AppDeps) {
+type RouteDeps struct {
+	DB  *gorm.DB
+	ENV *ENV
+}
+
+func registerRoutes(server *echo.Echo, deps *RouteDeps) {
 	registerListAccountsRoute(&listAccountsDeps{
 		DB:     deps.DB,
 		Server: server,
+		ENV:    deps.ENV,
 	})
 
 	registerCreateAccountRoute(&createAccountRouteDeps{

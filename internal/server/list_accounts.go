@@ -9,6 +9,7 @@ import (
 type listAccountsDeps struct {
 	DB     *gorm.DB
 	Server *echo.Echo
+	ENV    *ENV
 }
 
 func registerListAccountsRoute(deps *listAccountsDeps) {
@@ -39,6 +40,6 @@ func registerListAccountsRoute(deps *listAccountsDeps) {
 			Data: accountResources,
 		})
 	}, func(next echo.HandlerFunc) echo.HandlerFunc {
-		return newAuthMiddlewareContext(next, issuer)
+		return newAuthMiddlewareContext(next, issuer, deps.ENV.JWT_SECRET)
 	})
 }

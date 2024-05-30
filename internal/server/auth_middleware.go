@@ -13,7 +13,7 @@ type AuthContext struct {
 	AccountId string
 }
 
-func newAuthMiddlewareContext(next echo.HandlerFunc, issuer string) echo.HandlerFunc {
+func newAuthMiddlewareContext(next echo.HandlerFunc, issuer, jwtSecret string) echo.HandlerFunc {
 	return func(ctx echo.Context) error {
 		accessTokenCookie, err := ctx.Request().Cookie("accessToken")
 
@@ -33,7 +33,7 @@ func newAuthMiddlewareContext(next echo.HandlerFunc, issuer string) echo.Handler
 		accessToken := accessTokenCookie.Value
 
 		token, err := jwt.ParseWithClaims(accessToken, &auth.TokenClaims{}, func(token *jwt.Token) (interface{}, error) {
-			return []byte("top-secret"), nil
+			return []byte(jwtSecret), nil
 		}, jwt.WithIssuer(issuer), jwt.WithExpirationRequired())
 
 		if err != nil {
