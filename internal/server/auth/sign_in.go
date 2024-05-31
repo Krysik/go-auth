@@ -51,16 +51,22 @@ type TokenClaims struct {
 	jwt.RegisteredClaims
 }
 
-func GenerateAuthTokens(issuer, jwtSecret, accountId string) (*AuthToken, error) {
-	secret := []byte(jwtSecret)
+type TokenOpts struct {
+	Issuer    string
+	JwtSecret string
+	Subject   string
+}
+
+func GenerateAuthTokens(opts TokenOpts) (*AuthToken, error) {
+	secret := []byte(opts.JwtSecret)
 	now := time.Now()
 
 	accessTokenTtl := now.Add(time.Hour)
 	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, &TokenClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer:    issuer,
+			Issuer:    opts.Issuer,
 			ExpiresAt: jwt.NewNumericDate(accessTokenTtl),
-			Subject:   accountId,
+			Subject:   opts.Subject,
 		},
 	})
 
@@ -74,9 +80,9 @@ func GenerateAuthTokens(issuer, jwtSecret, accountId string) (*AuthToken, error)
 	refreshTokenTtl := now.Add(dayInHours * 30)
 	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, &TokenClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer:    issuer,
+			Issuer:    opts.Issuer,
 			ExpiresAt: jwt.NewNumericDate(refreshTokenTtl),
-			Subject:   accountId,
+			Subject:   opts.Subject,
 		},
 	})
 	signedRefreshJwt, refreshTokenErr := refreshToken.SignedString(secret)
