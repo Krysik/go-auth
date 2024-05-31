@@ -16,7 +16,6 @@ type refreshSessionHandlerDeps struct {
 
 func registerRefreshSessionRoute(deps *refreshSessionHandlerDeps) {
 	deps.Server.PATCH("/sessions", func(ctx echo.Context) error {
-		// TODO: run in database transaction
 		refreshTokenCookie, refreshTokenCookieErr := ctx.Cookie("refreshToken")
 
 		if refreshTokenCookieErr != nil {
@@ -32,63 +31,68 @@ func registerRefreshSessionRoute(deps *refreshSessionHandlerDeps) {
 
 		ac := ctx.(*AuthContext)
 		accountId := ac.AccountId
-		_, err := auth.GetAccountById(deps.DB, accountId)
+		err := deps.DB.Transaction(func(tx *gorm.DB) error {
+			_, err := auth.GetAccountById(tx, accountId)
 
-		if err != nil {
-			return ctx.JSON(http.StatusNotFound, HttpErrorResponse{
-				Errors: []HttpError{
-					{
-						Code:  "ACCOUNT_NOT_FOUND",
-						Title: "Account not found",
+			if err != nil {
+				return ctx.JSON(http.StatusNotFound, HttpErrorResponse{
+					Errors: []HttpError{
+						{
+							Code:  "ACCOUNT_NOT_FOUND",
+							Title: "Account not found",
+						},
 					},
-				},
-			})
-		}
-		refreshToken := refreshTokenCookie.Value
-		_, err = auth.GetRefreshToken(deps.DB, refreshToken, accountId)
+				})
+			}
+			refreshToken := refreshTokenCookie.Value
+			_, err = auth.GetRefreshToken(tx, refreshToken, accountId)
 
-		if err != nil {
-			return ctx.JSON(http.StatusUnauthorized, HttpErrorResponse{
-				Errors: []HttpError{
-					{
-						Code:  "REFRESH_TOKEN_NOT_FOUND",
-						Title: "Refresh token not found",
+			if err != nil {
+				return ctx.JSON(http.StatusUnauthorized, HttpErrorResponse{
+					Errors: []HttpError{
+						{
+							Code:  "REFRESH_TOKEN_NOT_FOUND",
+							Title: "Refresh token not found",
+						},
 					},
-				},
+				})
+			}
+
+			authTokens, err := auth.GenerateAuthTokens(auth.TokenOpts{
+				Issuer:    deps.ENV.TokenIssuer,
+				JwtSecret: deps.ENV.JwtSecret,
+				Subject:   accountId,
 			})
-		}
+			if err != nil {
+				ctx.Logger().Error(err.Error(), " failed to generate auth tokens")
+				return err
+			}
 
-		authTokens, err := auth.GenerateAuthTokens("localhost", deps.ENV.JwtSecret, accountId)
+			if err = auth.SaveRefreshToken(tx, authTokens.RefreshToken, accountId); err != nil {
+				return err
+			}
 
-		if err != nil {
-			ctx.Logger().Error(err.Error(), " failed to generate auth tokens")
-			return err
-		}
+			ctx.SetCookie(&http.Cookie{
+				Name:     "accessToken",
+				Value:    authTokens.AccessToken,
+				HttpOnly: true,
+				Secure:   true,
+				Path:     "/",
+				Expires:  authTokens.AccessTokenTtl,
+			})
+			ctx.SetCookie(&http.Cookie{
+				Name:     "refreshToken",
+				Value:    authTokens.RefreshToken,
+				HttpOnly: true,
+				Secure:   true,
+				Path:     "/",
+				Expires:  authTokens.RefreshTokenTtl,
+			})
 
-		err = auth.SaveRefreshToken(deps.DB, authTokens.RefreshToken, accountId)
-
-		if err != nil {
-			return err
-		}
-
-		ctx.SetCookie(&http.Cookie{
-			Name:     "accessToken",
-			Value:    authTokens.AccessToken,
-			HttpOnly: true,
-			Secure:   true,
-			Path:     "/",
-			Expires:  authTokens.AccessTokenTtl,
-		})
-		ctx.SetCookie(&http.Cookie{
-			Name:     "refreshToken",
-			Value:    authTokens.RefreshToken,
-			HttpOnly: true,
-			Secure:   true,
-			Path:     "/",
-			Expires:  authTokens.RefreshTokenTtl,
+			return ctx.NoContent(http.StatusNoContent)
 		})
 
-		return ctx.NoContent(http.StatusNoContent)
+		return err
 	}, func(next echo.HandlerFunc) echo.HandlerFunc {
 		return newAuthMiddlewareContext(next, deps.ENV.TokenIssuer, deps.ENV.JwtSecret)
 	})
