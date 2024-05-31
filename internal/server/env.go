@@ -9,6 +9,7 @@ type ENV struct {
 	TokenIssuer string `env:"TOKEN_ISSUER"`
 	Port        int    `env:"PORT" envDefault:"8080"`
 	DbFilePath  string `env:"DB_FILE_PATH"`
+	LogLevel    string `env:"LOG_LEVEL" envDefault:"info"`
 }
 
 func NewEnv() (*ENV, error) {

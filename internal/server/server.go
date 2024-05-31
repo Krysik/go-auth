@@ -13,14 +13,20 @@ type AppDeps struct {
 	ENV *ENV
 }
 
+var logLevels = map[string]log.Lvl{
+	"debug": log.DEBUG,
+	"info":  log.INFO,
+	"warn":  log.WARN,
+	"error": log.ERROR,
+}
+
 func NewServer(appDeps *AppDeps) *echo.Echo {
 	server := echo.New()
 	server.Use(middleware.RequestID())
 	server.Use(middleware.Logger())
 
 	server.Use(echoprometheus.NewMiddleware("auth"))
-
-	server.Logger.SetLevel(log.INFO)
+	server.Logger.SetLevel(logLevels[appDeps.ENV.LogLevel])
 
 	server.GET("/metrics", echoprometheus.NewHandler())
 
