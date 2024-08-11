@@ -39,30 +39,33 @@ type NewSessionPayload struct {
 	Password string `json:"password"`
 }
 
-type RouteDeps struct {
-	DB  *gorm.DB
-	ENV *ENV
+type Api struct {
+	Server *echo.Echo
+	DB     *gorm.DB
+	ENV    *ENV
 }
 
-func registerRoutes(server *echo.Echo, deps *RouteDeps) {
+func (api *Api) RegisterRoutes() {
 	registerListAccountsRoute(&listAccountsDeps{
-		DB:     deps.DB,
-		Server: server,
-		ENV:    deps.ENV,
+		DB:     api.DB,
+		ENV:    api.ENV,
+		Server: api.Server,
 	})
 
 	registerCreateAccountRoute(&createAccountRouteDeps{
-		DB:     deps.DB,
-		Server: server,
+		DB:     api.DB,
+		Server: api.Server,
 	})
 
 	registerSignInRoute(&signInRouteDeps{
-		DB:     deps.DB,
-		Server: server,
+		DB:     api.DB,
+		ENV:    api.ENV,
+		Server: api.Server,
 	})
 
 	registerRefreshSessionRoute(&refreshSessionHandlerDeps{
-		DB:     deps.DB,
-		Server: server,
+		DB:     api.DB,
+		ENV:    api.ENV,
+		Server: api.Server,
 	})
 }

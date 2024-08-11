@@ -36,10 +36,11 @@ func main() {
 		panic("failed to migrate database")
 	}
 
-	deps := server.AppDeps{
+	server := server.Server{
 		DB:  db,
 		ENV: env,
 	}
-	server := server.NewServer(&deps)
-	server.Logger.Fatal(server.Start(":"+fmt.Sprint(env.Port)), "failed to start server")
+	app := server.Initialize()
+
+	app.Logger.Fatal(app.Start(":"+fmt.Sprint(env.Port)), "failed to start server")
 }

@@ -22,7 +22,7 @@ func registerRefreshSessionRoute(deps *refreshSessionHandlerDeps) {
 			return ctx.JSON(http.StatusBadRequest, HttpErrorResponse{
 				Errors: []HttpError{
 					{
-						Code:  "MISSING_REFRESH_TOKEN_COOKIE",
+						Code:  "MISSING_REFRESH_TOKEN",
 						Title: "Missing refresh token cookie",
 					},
 				},

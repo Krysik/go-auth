@@ -27,8 +27,6 @@ type NewAccount struct {
 	Password string
 }
 
-// https://www.alexedwards.net/blog/how-to-hash-and-verify-passwords-with-argon2-in-go
-
 func CreateAccount(db *gorm.DB, account NewAccount) (*Account, error) {
 	salt, err := generatePasswordSalt(saltLength)
 
