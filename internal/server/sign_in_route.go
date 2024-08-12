@@ -67,6 +67,7 @@ func registerSignInRoute(deps *signInRouteDeps) {
 			Name:     "accessToken",
 			Value:    authTokens.AccessToken,
 			HttpOnly: true,
+			Secure:   ctx.IsTLS(),
 			Path:     "/",
 			Expires:  authTokens.AccessTokenTtl,
 		})
@@ -74,6 +75,7 @@ func registerSignInRoute(deps *signInRouteDeps) {
 			Name:     "refreshToken",
 			Value:    authTokens.RefreshToken,
 			HttpOnly: true,
+			Secure:   ctx.IsTLS(),
 			Path:     "/",
 			Expires:  authTokens.RefreshTokenTtl,
 		})
