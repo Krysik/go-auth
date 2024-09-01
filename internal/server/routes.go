@@ -34,11 +34,6 @@ type AccountResource struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 }
 
-type NewSessionPayload struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
 type Api struct {
 	Server *echo.Echo
 	DB     *gorm.DB
@@ -46,26 +41,26 @@ type Api struct {
 }
 
 func (api *Api) RegisterRoutes() {
-	registerListAccountsRoute(&listAccountsDeps{
+	(&ListAccountsRoute{
 		DB:     api.DB,
+		Server: api.Server,
 		ENV:    api.ENV,
-		Server: api.Server,
-	})
+	}).Mount()
 
-	registerCreateAccountRoute(&createAccountRouteDeps{
+	(&CreateAccountRoute{
 		DB:     api.DB,
 		Server: api.Server,
-	})
+	}).Mount()
 
-	registerSignInRoute(&signInRouteDeps{
+	(&SignInRoute{
 		DB:     api.DB,
+		Server: api.Server,
 		ENV:    api.ENV,
-		Server: api.Server,
-	})
+	}).Mount()
 
-	registerRefreshSessionRoute(&refreshSessionHandlerDeps{
+	(&RefreshSessionRoute{
 		DB:     api.DB,
-		ENV:    api.ENV,
 		Server: api.Server,
-	})
+		ENV:    api.ENV,
+	}).Mount()
 }

@@ -6,15 +6,15 @@ import (
 	"gorm.io/gorm"
 )
 
-type listAccountsDeps struct {
+type ListAccountsRoute struct {
 	DB     *gorm.DB
 	Server *echo.Echo
 	ENV    *ENV
 }
 
-func registerListAccountsRoute(deps *listAccountsDeps) {
-	deps.Server.GET("/accounts", func(ctx echo.Context) error {
-		accounts, err := auth.ListAccounts(deps.DB)
+func (r *ListAccountsRoute) Mount() {
+	r.Server.GET("/accounts", func(ctx echo.Context) error {
+		accounts, err := auth.ListAccounts(r.DB)
 
 		if err != nil {
 			ctx.Logger().Error(err.Error(), "failed to list accounts")
@@ -40,6 +40,7 @@ func registerListAccountsRoute(deps *listAccountsDeps) {
 			Data: accountResources,
 		})
 	}, func(next echo.HandlerFunc) echo.HandlerFunc {
-		return newAuthMiddlewareContext(next, deps.ENV.TokenIssuer, deps.ENV.JwtSecret)
+		return newAuthMiddlewareContext(next, r.ENV.TokenIssuer, r.ENV.JwtSecret)
 	})
+
 }

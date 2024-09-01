@@ -8,14 +8,14 @@ import (
 	"gorm.io/gorm"
 )
 
-type refreshSessionHandlerDeps struct {
+type RefreshSessionRoute struct {
 	DB     *gorm.DB
 	Server *echo.Echo
 	ENV    *ENV
 }
 
-func registerRefreshSessionRoute(deps *refreshSessionHandlerDeps) {
-	deps.Server.PATCH("/sessions", func(ctx echo.Context) error {
+func (r *RefreshSessionRoute) Mount() {
+	r.Server.PATCH("/sessions", func(ctx echo.Context) error {
 		refreshTokenCookie, refreshTokenCookieErr := ctx.Cookie("refreshToken")
 
 		if refreshTokenCookieErr != nil {
@@ -31,7 +31,7 @@ func registerRefreshSessionRoute(deps *refreshSessionHandlerDeps) {
 
 		ac := ctx.(*AuthContext)
 		accountId := ac.AccountId
-		err := deps.DB.Transaction(func(tx *gorm.DB) error {
+		err := r.DB.Transaction(func(tx *gorm.DB) error {
 			_, err := auth.GetAccountById(tx, accountId)
 
 			if err != nil {
@@ -59,8 +59,8 @@ func registerRefreshSessionRoute(deps *refreshSessionHandlerDeps) {
 			}
 
 			authTokens, err := auth.GenerateAuthTokens(auth.TokenOpts{
-				Issuer:    deps.ENV.TokenIssuer,
-				JwtSecret: deps.ENV.JwtSecret,
+				Issuer:    r.ENV.TokenIssuer,
+				JwtSecret: r.ENV.JwtSecret,
 				Subject:   accountId,
 			})
 			if err != nil {
@@ -94,6 +94,6 @@ func registerRefreshSessionRoute(deps *refreshSessionHandlerDeps) {
 
 		return err
 	}, func(next echo.HandlerFunc) echo.HandlerFunc {
-		return newAuthMiddlewareContext(next, deps.ENV.TokenIssuer, deps.ENV.JwtSecret)
+		return newAuthMiddlewareContext(next, r.ENV.TokenIssuer, r.ENV.JwtSecret)
 	})
 }

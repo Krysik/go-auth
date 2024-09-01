@@ -8,14 +8,20 @@ import (
 	"gorm.io/gorm"
 )
 
-type signInRouteDeps struct {
+type SignInRoute struct {
 	DB     *gorm.DB
 	Server *echo.Echo
 	ENV    *ENV
 }
 
-func registerSignInRoute(deps *signInRouteDeps) {
-	deps.Server.POST("/sessions", func(ctx echo.Context) error {
+type NewSessionPayload struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+func (r *SignInRoute) Mount() {
+	r.Server.POST("/sessions", func(ctx echo.Context) error {
+
 		payload := new(NewSessionPayload)
 
 		if err := ctx.Bind(payload); err != nil {
@@ -31,7 +37,7 @@ func registerSignInRoute(deps *signInRouteDeps) {
 			})
 		}
 
-		account, err := auth.ValidateCredentials(deps.DB, payload.Email, payload.Password)
+		account, err := auth.ValidateCredentials(r.DB, payload.Email, payload.Password)
 
 		if err != nil {
 			ctx.Logger().Error(err.Error(), " failed to validate credentials")
@@ -47,8 +53,8 @@ func registerSignInRoute(deps *signInRouteDeps) {
 			})
 		}
 		authTokens, err := auth.GenerateAuthTokens(auth.TokenOpts{
-			Issuer:    deps.ENV.TokenIssuer,
-			JwtSecret: deps.ENV.JwtSecret,
+			Issuer:    r.ENV.TokenIssuer,
+			JwtSecret: r.ENV.JwtSecret,
 			Subject:   account.ID,
 		})
 
@@ -57,7 +63,7 @@ func registerSignInRoute(deps *signInRouteDeps) {
 			return err
 		}
 
-		err = auth.SaveRefreshToken(deps.DB, authTokens.RefreshToken, account.ID)
+		err = auth.SaveRefreshToken(r.DB, authTokens.RefreshToken, account.ID)
 
 		if err != nil {
 			return err

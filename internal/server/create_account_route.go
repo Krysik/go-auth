@@ -6,7 +6,7 @@ import (
 	"gorm.io/gorm"
 )
 
-type createAccountRouteDeps struct {
+type CreateAccountRoute struct {
 	DB     *gorm.DB
 	Server *echo.Echo
 }
@@ -17,8 +17,8 @@ type newAccountPayload struct {
 	Password string `json:"password"`
 }
 
-func registerCreateAccountRoute(deps *createAccountRouteDeps) {
-	deps.Server.POST("/accounts", func(ctx echo.Context) error {
+func (r *CreateAccountRoute) Mount() {
+	r.Server.POST("/accounts", func(ctx echo.Context) error {
 		payload := new(newAccountPayload)
 
 		if err := ctx.Bind(payload); err != nil {
@@ -34,7 +34,7 @@ func registerCreateAccountRoute(deps *createAccountRouteDeps) {
 		}
 
 		acc, err := auth.CreateAccount(
-			deps.DB,
+			r.DB,
 			auth.NewAccount{
 				FullName: payload.FullName,
 				Email:    payload.Email,
