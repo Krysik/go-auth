@@ -19,3 +19,5 @@ go.work
 
 db.sqlite
 .env
+
+tmp
