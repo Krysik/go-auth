@@ -76,7 +76,7 @@ func (r *RefreshSessionRoute) Mount() {
 				Name:     "accessToken",
 				Value:    authTokens.AccessToken,
 				HttpOnly: true,
-				Secure:   true,
+				Secure:   ctx.IsTLS(),
 				Path:     "/",
 				Expires:  authTokens.AccessTokenTtl,
 			})
@@ -84,7 +84,7 @@ func (r *RefreshSessionRoute) Mount() {
 				Name:     "refreshToken",
 				Value:    authTokens.RefreshToken,
 				HttpOnly: true,
-				Secure:   true,
+				Secure:   ctx.IsTLS(),
 				Path:     "/",
 				Expires:  authTokens.RefreshTokenTtl,
 			})
