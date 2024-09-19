@@ -6,6 +6,7 @@ import (
 
 	"github.com/Krysik/go-auth/internal/server"
 	"github.com/Krysik/go-auth/internal/server/auth"
+	"github.com/asaskevich/govalidator"
 	"github.com/joho/godotenv"
 
 	"gorm.io/driver/sqlite"
@@ -14,6 +15,7 @@ import (
 
 func main() {
 	loadDotenvErr := godotenv.Load()
+	govalidator.SetFieldsRequiredByDefault(true)
 
 	if loadDotenvErr != nil {
 		log.Fatal("Error loading .env file")

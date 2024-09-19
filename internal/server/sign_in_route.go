@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/Krysik/go-auth/internal/server/auth"
+	"github.com/asaskevich/govalidator"
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
 )
@@ -15,8 +16,8 @@ type SignInRoute struct {
 }
 
 type NewSessionPayload struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Email    string `json:"email" valid:"email,required"`
+	Password string `json:"password" valid:"required"`
 }
 
 func (r *SignInRoute) Mount() {
@@ -25,13 +26,32 @@ func (r *SignInRoute) Mount() {
 		payload := new(NewSessionPayload)
 
 		if err := ctx.Bind(payload); err != nil {
-			ctx.Logger().Error(err.Error(), " failed to bind payload")
+			return ctx.JSON(http.StatusBadRequest, HttpErrorResponse{
+				Errors: []HttpError{
+					{
+						Code:    "Bad request",
+						Title:   "Validation Error",
+						Details: "Invalid payload format",
+					},
+				},
+			})
+		}
+
+		_, err := govalidator.ValidateStruct(NewSessionPayload{
+			Email:    payload.Email,
+			Password: payload.Password,
+		})
+
+		ctx.Logger().Infof("payload values email: %s password: %s", payload.Email, payload.Password)
+
+		if err != nil {
+			ctx.Logger().Error(err.Error(), "Validation failed")
 			return ctx.JSON(http.StatusBadRequest, HttpErrorResponse{
 				Errors: []HttpError{
 					{
 						Code:    "BAD_REQUEST",
 						Title:   "Validation error",
-						Details: "Invalid body payload",
+						Details: err.Error(),
 					},
 				},
 			})
