@@ -1,6 +1,8 @@
 package server
 
 import (
+	"net/http"
+
 	"github.com/Krysik/go-auth/internal/server/auth"
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
@@ -12,9 +14,9 @@ type CreateAccountRoute struct {
 }
 
 type newAccountPayload struct {
-	FullName string `json:"fullName"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	FullName string `json:"fullName" valid:"required"`
+	Email    string `json:"email" valid:"email"`
+	Password string `json:"password" valid:"required"`
 }
 
 func (r *CreateAccountRoute) Mount() {
@@ -22,15 +24,11 @@ func (r *CreateAccountRoute) Mount() {
 		payload := new(newAccountPayload)
 
 		if err := ctx.Bind(payload); err != nil {
-			return ctx.JSON(400, HttpErrorResponse{
-				Errors: []HttpError{
-					{
-						Code:    "BAD_REQUEST",
-						Title:   "Validation error",
-						Details: "Invalid body payload",
-					},
-				},
-			})
+			return ctx.JSON(http.StatusBadRequest, invalidPayloadResponse)
+		}
+
+		if err := ctx.Validate(payload); err != nil {
+			return err
 		}
 
 		acc, err := auth.CreateAccount(
@@ -44,19 +42,10 @@ func (r *CreateAccountRoute) Mount() {
 
 		if err != nil {
 			ctx.Logger().Error(err.Error(), " failed to create account")
-
-			return ctx.JSON(500, HttpErrorResponse{
-				Errors: []HttpError{
-					{
-						Code:    "INTERNAL_SERVER_ERROR",
-						Title:   "Internal Server Error",
-						Details: "Something went wrong",
-					},
-				},
-			})
+			return ctx.JSON(http.StatusInternalServerError, internalServerErrorResponse)
 		}
 
-		return ctx.JSON(201, HttpResource{Data: AccountResource{
+		return ctx.JSON(http.StatusCreated, HttpResource{Data: AccountResource{
 			Id:        acc.ID,
 			Type:      "account",
 			FullName:  acc.FullName,

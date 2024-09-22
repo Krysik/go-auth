@@ -15,8 +15,8 @@ type SignInRoute struct {
 }
 
 type NewSessionPayload struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Email    string `json:"email" valid:"email"`
+	Password string `json:"password" valid:"required"`
 }
 
 func (r *SignInRoute) Mount() {
@@ -25,16 +25,11 @@ func (r *SignInRoute) Mount() {
 		payload := new(NewSessionPayload)
 
 		if err := ctx.Bind(payload); err != nil {
-			ctx.Logger().Error(err.Error(), " failed to bind payload")
-			return ctx.JSON(http.StatusBadRequest, HttpErrorResponse{
-				Errors: []HttpError{
-					{
-						Code:    "BAD_REQUEST",
-						Title:   "Validation error",
-						Details: "Invalid body payload",
-					},
-				},
-			})
+			return ctx.JSON(http.StatusBadRequest, invalidPayloadResponse)
+		}
+
+		if err := ctx.Validate(payload); err != nil {
+			return err
 		}
 
 		account, err := auth.ValidateCredentials(r.DB, payload.Email, payload.Password)
@@ -52,6 +47,7 @@ func (r *SignInRoute) Mount() {
 				},
 			})
 		}
+
 		authTokens, err := auth.GenerateAuthTokens(auth.TokenOpts{
 			Issuer:    r.ENV.TokenIssuer,
 			JwtSecret: r.ENV.JwtSecret,
@@ -86,7 +82,7 @@ func (r *SignInRoute) Mount() {
 			Expires:  authTokens.RefreshTokenTtl,
 		})
 
-		return ctx.JSON(200, HttpResource{Data: AccountResource{
+		return ctx.JSON(http.StatusOK, HttpResource{Data: AccountResource{
 			Id:        account.ID,
 			Type:      "account",
 			FullName:  account.FullName,

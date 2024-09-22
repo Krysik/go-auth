@@ -1,8 +1,10 @@
 package server
 
 import (
+	"net/http"
 	"strings"
 
+	"github.com/asaskevich/govalidator"
 	"github.com/labstack/echo-contrib/echoprometheus"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -17,9 +19,35 @@ var logLevels = map[string]log.Lvl{
 	"error": log.ERROR,
 }
 
-type Server struct {
-	DB  *gorm.DB
-	ENV *ENV
+type (
+	Server struct {
+		DB  *gorm.DB
+		ENV *ENV
+	}
+
+	StructValidator func(s interface{}) (bool, error)
+
+	CustomValidator struct {
+		validator StructValidator
+	}
+)
+
+func (c *CustomValidator) Validate(i interface{}) error {
+	_, err := govalidator.ValidateStruct(i)
+
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, HttpErrorResponse{
+			Errors: []HttpError{
+				{
+					Code:    "BAD_REQUEST",
+					Title:   "Validation error",
+					Details: err.Error(),
+				},
+			},
+		})
+	}
+
+	return err
 }
 
 func (s *Server) Initialize() *echo.Echo {
@@ -28,6 +56,8 @@ func (s *Server) Initialize() *echo.Echo {
 	server.Use(middleware.Logger())
 
 	server.Use(echoprometheus.NewMiddleware("auth"))
+	server.Validator = &CustomValidator{validator: govalidator.ValidateStruct}
+
 	server.Logger.SetLevel(logLevels[strings.ToLower(s.ENV.LogLevel)])
 
 	server.GET("/metrics", echoprometheus.NewHandler())
